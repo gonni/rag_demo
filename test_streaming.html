@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스트리밍 채팅 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .ai-message {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #ddd;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #sendButton {
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #sendButton:hover {
+            background: #0056b3;
+        }
+        #sendButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .typing-indicator {
+            color: #666;
+            font-style: italic;
+            margin: 10px 0;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            스트리밍 채팅 테스트
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai-message">
+                안녕하세요! 저는 고니입니다. 무엇을 도와드릴까요?
+            </div>
+        </div>
+        <div class="input-container">
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="메시지를 입력하세요..." />
+                <button id="sendButton">전송</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        let messages = [];
+        let isStreaming = false;
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.id = 'typingIndicator';
+            indicator.textContent = '고니가 답변을 작성하고 있습니다...';
+            chatMessages.appendChild(indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function addError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            chatMessages.appendChild(errorDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isStreaming) return;
+
+            // 사용자 메시지 추가
+            addMessage(message, true);
+            messages.push({ role: 'user', content: message });
+            messageInput.value = '';
+
+            // 스트리밍 시작
+            isStreaming = true;
+            sendButton.disabled = true;
+            addTypingIndicator();
+
+            try {
+                const response = await fetch('/stream-chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ messages: messages })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let aiResponse = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'chunk') {
+                                    aiResponse += data.content;
+                                    // 실시간으로 AI 응답 업데이트
+                                    updateAIMessage(aiResponse);
+                                } else if (data.type === 'done') {
+                                    // 스트리밍 완료
+                                    messages.push({ role: 'assistant', content: aiResponse });
+                                    break;
+                                } else if (data.type === 'error') {
+                                    addError(data.content);
+                                    break;
+                                }
+                            } catch (e) {
+                                console.error('JSON parse error:', e);
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                addError('메시지 전송 중 오류가 발생했습니다.');
+            } finally {
+                isStreaming = false;
+                sendButton.disabled = false;
+                removeTypingIndicator();
+            }
+        }
+
+        function updateAIMessage(content) {
+            let aiMessageDiv = document.querySelector('.ai-message:last-child');
+            if (!aiMessageDiv || aiMessageDiv.previousElementSibling?.classList.contains('user-message')) {
+                aiMessageDiv = document.createElement('div');
+                aiMessageDiv.className = 'message ai-message';
+                chatMessages.appendChild(aiMessageDiv);
+            }
+            aiMessageDiv.textContent = content;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 이벤트 리스너 설정
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 입력 필드에 포커스
+        messageInput.focus();
+    </script>
+</body>
+</html> 
