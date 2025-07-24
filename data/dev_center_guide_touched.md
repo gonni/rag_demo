@@ -2107,10 +2107,10 @@ Content-type: application/json;charset=UTF-8
   {"code": "all", "name": "전체 상품", "description": "관리형 상품 + 월정액 상품"}
 ]
 
-### 07. PNS (Push Notification Service) 이용하기
+### 07. PNS (Payment Notification Service) 이용하기
 #### 개요 
-원스토어는 개발자를 위해 두 가지 Push Notification Service를 제공합니다.
-* PNS는 Push Notification Service의 약자입니다.
+원스토어는 개발자를 위해 두 가지 Payment Notification Service를 제공합니다.
+* PNS는 Payment Notification Service의 약자입니다.
 * PNS는 모바일의 네트워크 연결 불안정성을 보완하기 위해 개발사가 지정한 서버로 개별 사용자의 결제 상태(결제 완료, 결제 취소)를 메시지로 전송하는 기능입니다.
 * 정확히는 개발사가 지정한 서버에서 원스토어가 정의한 규칙에 맞추어 API를 구현하면 해당 API를 원스토어의 결제 담당 서버에서 호출하는 형태입니다.
 * Server to Server라고 할지라도 네트워크 문제로 메세지 전송 실패가 발생하기 때문에 200 OK로 응답을 인지하지 못할 경우 반복하여 메시지가 전송될 수 있습니다.
@@ -2434,7 +2434,7 @@ getSubscriptionDetail
   {"상태": "만료", "queryPurchasesAsync반환여부": "N", "recurringState": 1, "getSubscriptionDetail반환여부": "Y", "expiryTimeMillis": "종료됨", "autoRenewing": false}
 ]
 
-정기 결제 상태가 변경되면, SubscriptionNotification이 전송됩니다. 관련 내용은 PNS(Push Notification Service) 이용하기를 참고하세요.
+정기 결제 상태가 변경되면, SubscriptionNotification이 전송됩니다. 관련 내용은 PNS(Payment Notification Service) 이용하기를 참고하세요.
 
 #### 정기 결제 구매 
 사용자가 정기 결제를 구매하면 PurchaseClient.queryPurchasesAsync()에서 정기 결제 결과를 반환하고, SUBSCRIPTION_PURCHASED인 SubscriptionNotification이 전송됩니다. 
