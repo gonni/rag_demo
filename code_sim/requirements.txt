@@ -1,0 +1,13 @@
+# RAG 최적화 시뮬레이션을 위한 필수 패키지들
+
+# Core LangChain packages
+langchain
+langchain-community
+langchain-ollama
+langchain-text-splitters
+
+# Vector database
+faiss-cpu
+
+# Basic Python packages
+numpy
